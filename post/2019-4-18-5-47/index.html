@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" >
+
+<title>用UIPresentationController来写一个简洁漂亮的底部弹出控件 | Ike&#39;s Blog</title>
+<meta name="description" content="Ike&#39;s Blog">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://IkeBanPC.github.io/favicon.ico?v=1555581272788">
+<link rel="stylesheet" href="https://IkeBanPC.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+
+      <div class="sidebar" :class="{ 'full-height': menuVisible }">
+  <div class="top-container" data-aos="fade-right">
+    <div class="top-header-container">
+      <a class="site-title-container" href="https://IkeBanPC.github.io">
+        <img src="https://IkeBanPC.github.io/images/avatar.png?v=1555581272788" class="site-logo">
+        <h1 class="site-title">Ike&#39;s Blog</h1>
+      </a>
+      <div class="menu-btn" @click="menuVisible = !menuVisible">
+        <div class="line"></div>
+      </div>
+    </div>
+    <div>
+      
+        
+          <a href="/" class="site-nav">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="site-nav">
+            归档
+          </a>
+        
+      
+        
+          <a href="/tags" class="site-nav">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="site-nav">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+  <div class="bottom-container" data-aos="flip-up" data-aos-offset="0">
+    <div class="social-container">
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </div>
+    <div class="site-description">
+      Ike's Blog
+    </div>
+    <div class="site-footer">
+      2019 IkeBan.
+    </div>
+  </div>
+</div>
+
+
+      <div class="main-container">
+        <div class="content-container" data-aos="fade-up">
+          <div class="post-detail">
+            <h2 class="post-title">用UIPresentationController来写一个简洁漂亮的底部弹出控件</h2>
+            <div class="post-date">2019-04-18</div>
+            
+              <div class="feature-container" style="background-image: url('https://IkeBanPC.github.io/post-images/2019-4-18-5-47.png')">
+              </div>
+            
+            <div class="post-content">
+              <h3 id="用uipresentationcontroller来写一个简洁漂亮的底部弹出控件">用UIPresentationController来写一个简洁漂亮的底部弹出控件</h3>
+<p>iOS App开发过程中，底部弹出框是一个非常常见的需求。如何写一个漂亮的底部弹出框呢？方式有很多，直接添加一个自定义的View让它动画展示和隐藏都是一种非常简单的操作，不过看起来似乎不那么优雅，我们可以使用<code>UIPresentationController</code>来方便快捷地创建一个高定制化的底部弹出框。<code>UIPresentationController</code>的官方文档地址如下：</p>
+<p><a href="https://developer.apple.com/documentation/uikit/uipresentationcontroller">UIPresentationController</a>: an object that manages the transition animations and the presentation of view controllers onscreen.</p>
+<p>先上最终效果：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/2/28/161db2f170b73162?w=256&amp;h=456&amp;f=gif&amp;s=441809" alt=""></p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/2/28/161db2f170a4e5b1?w=256&amp;h=456&amp;f=gif&amp;s=437642" alt=""></p>
+<p>GitHub: <a href="https://github.com/IkeBanPC/PresentBottom">https://github.com/IkeBanPC/PresentBottom</a></p>
+<p>我们需要在iOS8及以上的系统中使用<code>UIPresentationController</code>，使用时需要新建一个类继承<code>UIPresentationController</code>并重写以下几个方法和属性：</p>
+<pre><code class="language-Swift">//决定了弹出框的frame
+override var frameOfPresentedViewInContainerView
+
+//重写此方法可以在弹框即将显示时执行所需要的操作
+override func presentationTransitionWillBegin()
+
+//重写此方法可以在弹框显示完毕时执行所需要的操作
+override func presentationTransitionDidEnd(_ completed: Bool)
+
+//重写此方法可以在弹框即将消失时执行所需要的操作
+override func dismissalTransitionWillBegin()
+
+//重写此方法可以在弹框消失之后执行所需要的操作
+override func dismissalTransitionDidEnd(_ completed: Bool)
+</code></pre>
+<p>重写初始化方法：</p>
+<pre><code class="language-Swift">override init(presentedViewController: UIViewController, presenting presentingViewController: UIViewController?) {
+    super.init(presentedViewController:presentedViewController,presenting: presentingViewController)
+}
+</code></pre>
+<p>在大多数时候，我们希望底部弹出框出现时，先前的显示区域能够灰暗一些，来强调弹出框的显示区域是用户当前操作的首要区域。因此，我们给这个自定义的类添加一个遮罩：</p>
+<pre><code class="language-Swift">lazy var blackView: UIView = {
+    let view = UIView()
+    if let frame = self.containerView?.bounds {
+        view.frame = frame
+    }
+    view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+    return view
+}()
+</code></pre>
+<p>重写<code>presentationTransitionWillBegin</code>、<code>dismissalTransitionWillBegin</code>和<code>dismissalTransitionDidEnd(_ completed: Bool)</code>方法。在弹窗即将出现时把遮罩添加到containerView，并通过动画将遮罩的alpha设置为1；在弹窗即将消失时通过动画将遮罩的alpha设置为0；在弹框消失之后将遮罩从containerView上移除：</p>
+<pre><code class="language-Swift">override func presentationTransitionWillBegin() {
+    blackView.alpha = 0
+    containerView?.addSubview(blackLayerView）
+    UIView.animate(withDuration: 0.5) {
+        self.blackView.alpha = 1
+    }
+}
+
+override func dismissalTransitionWillBegin() {
+    UIView.animate(withDuration: 0.5) {
+        self.blackView.alpha = 0
+    }
+}
+
+override func dismissalTransitionDidEnd(_ completed: Bool) {
+    if completed {
+        blackView.removeFromSuperview()
+    }
+}
+</code></pre>
+<p>接下来，我们重写<code>frameOfPresentedViewInContainerView</code>这个属性。它决定了弹出框在屏幕中的位置，由于我们是底部弹出框，我们设定一个弹出框的高度controllerHeight，即可得出弹出框的frame：</p>
+<pre><code class="language-Swift">override var frameOfPresentedViewInContainerView: CGRect {
+    return CGRect(x: 0, y: UIScreen.main.bounds.height-controllerHeight, width: UIScreen.main.bounds.width, height: controllerHeight)
+}
+</code></pre>
+<p>为了便于我们创建各种各样的底部弹出框，我们创建一个基类<code>PresentBottomVC</code>继承自<code>UIViewController</code>，并添加一个属性<code>controllerHeight</code>用于得到弹出框的高度：</p>
+<pre><code class="language-Swift">public class PresentBottomVC: UIViewController {
+    public var controllerHeight: CGFloat? {
+        get {
+            return self.controllerHeight
+        }
+    }
+}
+</code></pre>
+<p>之后，我们就可以新建继承自<code>PresentBottomVC</code>并重写<code>controllerHeight</code>属性的类来实现定制化底部弹出框。为了方便调用弹出方法，我们给<code>UIViewController</code>添加一个Extension，并实现<code>UIViewControllerTransitioningDelegate</code>协议：</p>
+<pre><code class="language-Swift">public func presentBottom(_ vc: PresentBottomVC.Type) {
+    let controller = vc.init()
+    controller.modalPresentationStyle = .custom
+    controller.transitioningDelegate = self
+    self.present(controller, animated: true, completion: nil)
+}
+public func presentationController(forPresented presented: UIViewController, presenting: UIViewController?, source: UIViewController) -&gt; UIPresentationController? {
+    let present = PresentBottom(presentedViewController: presented, presenting: presenting)
+    return present
+}
+</code></pre>
+<p>可以看到，所有继承自<code>PresentBottomVC</code>的ViewController都可以通过该方法来从另一个ViewController的底部弹出。例如，我们新建一个类<code>FirstBottomVC</code>，重写<code>controllerHeight</code>并设为200，在页面中添加一个关闭按钮：</p>
+<pre><code class="language-Swift">final class FirstBottomVC: PresentBottomVC {
+    lazy var closeButton:UIButton = {
+        let button = UIButton(frame: CGRect(x: 15, y: 30, width: 80, height: 30))
+        button.setTitle(&quot;Close&quot;, for: .normal)
+        button.setTitleColor(.black, for: .normal)
+        button.addTarget(self, action: #selector(closeButtonClicked), for: .touchUpInside)
+        return button
+    }()
+    override var controllerHeight: CGFloat? {
+        return 200
+    }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .cyan
+        view.addSubview(closeButton)
+    }
+    @objc func closeButtonClicked() {
+        self.dismiss(animated: true, completion: nil)
+    }
+}
+</code></pre>
+<p>之后在需要弹出的时候调用<code>UIViewController</code>的<code>presentBottom(_ vc: PresentBottomVC.Type)</code>方法就可以一句代码搞定啦：</p>
+<pre><code class="language-Swift">self.presentBottom(FirstBottomVC.self)
+</code></pre>
+<p>效果如下图：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/2/28/161db2f16c1a77e8?w=256&amp;h=456&amp;f=gif&amp;s=190665" alt=""></p>
+<p>测试用的弹框写好了，我们只要根据自己的需求去创建不同的<code>PresentBottomVC</code>的子类就可以方便快捷的实现各种各样的底部弹出框啦。实例中的两个效果可以参考<a href="https://github.com/IkeBanPC/PresentBottom">GitHub源码</a></p>
+
+            </div>
+            
+              <div class="tag-container">
+                
+                  <a href="https://IkeBanPC.github.io/tag/ui" class="tag">
+                    UI
+                  </a>
+                
+                  <a href="https://IkeBanPC.github.io/tag/ios" class="tag">
+                    iOS
+                  </a>
+                
+                  <a href="https://IkeBanPC.github.io/tag/swift" class="tag">
+                    Swift
+                  </a>
+                
+              </div>
+            
+            
+              <div class="next-post">
+                <div class="next">下一篇</div>
+                <a href="https://IkeBanPC.github.io/post/2019-4-18-17-32">
+                  <h3 class="post-title">
+                    【译】理解闭包中的内存泄漏
+                  </h3>
+                </a>
+              </div>
+            
+
+            
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+
+<script type="application/javascript">
+
+AOS.init();
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>
