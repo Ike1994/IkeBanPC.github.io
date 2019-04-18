@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
-<link rel="shortcut icon" href="https://IkeBanPC.github.io/favicon.ico?v=1555582439961">
+<link rel="shortcut icon" href="https://IkeBanPC.github.io/favicon.ico?v=1555588852539">
 <link rel="stylesheet" href="https://IkeBanPC.github.io/styles/main.css">
 
 
@@ -29,7 +29,7 @@
   <div class="top-container" data-aos="fade-right">
     <div class="top-header-container">
       <a class="site-title-container" href="https://IkeBanPC.github.io">
-        <img src="https://IkeBanPC.github.io/images/avatar.png?v=1555582439961" class="site-logo">
+        <img src="https://IkeBanPC.github.io/images/avatar.png?v=1555588852539" class="site-logo">
         <h1 class="site-title">IkeBan</h1>
       </a>
       <div class="menu-btn" @click="menuVisible = !menuVisible">
@@ -68,6 +68,10 @@
     <div class="social-container">
       
         
+          <a class="social-link" href="https://ikebanpc.github.io/" target="_blank">
+            <i class="fab fa-github"></i>
+          </a>
+        
       
         
       
@@ -103,6 +107,7 @@
 <li>原文作者: <a href="https://medium.com/@stremsdoerfer">Emilien Stremsdoerfer</a></li>
 <li>译者: <a href="https://juejin.im/user/5a95095af265da4e8077ddcd">Isaac Pan</a></li>
 </ul>
+<!-- more -->
 <p>在初学者阶段，开发过程中你甚至不知道会有内存泄漏的问题，完全忽略了他们，以至于最后发现代码中到处都有这种问题，一筹莫展。</p>
 <p>所以现在我们来深入理解一下内存泄漏什么时候会出现，以及用什么工具来避免它们。</p>
 <p>Apple写了一篇关于类之间的<a href="https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/AutomaticReferenceCounting.html#//apple_ref/doc/uid/TP40014097-CH20-ID51">强引用和循环引用</a>的不错的文章，清晰易懂地解释了什么是内存泄漏，以及在一些情况下如何避免它们。但是文章讲述的只是不常出现的情况，并且也很容易辨认出来，关于闭包的部分写的还是很困惑，所以让我们来彻底搞清楚这个问题。</p>
