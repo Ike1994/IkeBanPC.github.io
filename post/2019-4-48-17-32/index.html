@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" >
+
+<title>【译】理解闭包中的内存泄漏 | Ike&#39;s Blog</title>
+<meta name="description" content="Ike&#39;s Blog">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://IkeBanPC.github.io/favicon.ico?v=1555580266034">
+<link rel="stylesheet" href="https://IkeBanPC.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+
+      <div class="sidebar" :class="{ 'full-height': menuVisible }">
+  <div class="top-container" data-aos="fade-right">
+    <div class="top-header-container">
+      <a class="site-title-container" href="https://IkeBanPC.github.io">
+        <img src="https://IkeBanPC.github.io/images/avatar.png?v=1555580266034" class="site-logo">
+        <h1 class="site-title">Ike&#39;s Blog</h1>
+      </a>
+      <div class="menu-btn" @click="menuVisible = !menuVisible">
+        <div class="line"></div>
+      </div>
+    </div>
+    <div>
+      
+        
+          <a href="/" class="site-nav">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="site-nav">
+            归档
+          </a>
+        
+      
+        
+          <a href="/tags" class="site-nav">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="site-nav">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+  <div class="bottom-container" data-aos="flip-up" data-aos-offset="0">
+    <div class="social-container">
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </div>
+    <div class="site-description">
+      Ike's Blog
+    </div>
+    <div class="site-footer">
+      2019 IkeBan.
+    </div>
+  </div>
+</div>
+
+
+      <div class="main-container">
+        <div class="content-container" data-aos="fade-up">
+          <div class="post-detail">
+            <h2 class="post-title">【译】理解闭包中的内存泄漏</h2>
+            <div class="post-date">2019-04-18</div>
+            
+            <div class="post-content">
+              <ul>
+<li>原文地址: <a href="https://medium.com/@stremsdoerfer/understanding-memory-leaks-in-closures-48207214cba">Understanding memory leaks in closures</a></li>
+<li>原文作者: <a href="https://medium.com/@stremsdoerfer">Emilien Stremsdoerfer</a></li>
+<li>译者: <a href="https://juejin.im/user/5a95095af265da4e8077ddcd">Isaac Pan</a></li>
+</ul>
+<p>在初学者阶段，开发过程中你甚至不知道会有内存泄漏的问题，完全忽略了他们，以至于最后发现代码中到处都有这种问题，一筹莫展。</p>
+<p>所以现在我们来深入理解一下内存泄漏什么时候会出现，以及用什么工具来避免它们。</p>
+<p>Apple写了一篇关于类之间的<a href="https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/AutomaticReferenceCounting.html#//apple_ref/doc/uid/TP40014097-CH20-ID51">强引用和循环引用</a>的不错的文章，清晰易懂地解释了什么是内存泄漏，以及在一些情况下如何避免它们。但是文章讲述的只是不常出现的情况，并且也很容易辨认出来，关于闭包的部分写的还是很困惑，所以让我们来彻底搞清楚这个问题。</p>
+<h3 id="闭包中的循环引用">闭包中的循环引用</h3>
+<p>首先，你得明白什么是闭包，它是干什么的。我喜欢把它称为这样的一小段代码，当声明过后，它会创建出一个临时的类，包含所有它执行时所需要的对象的引用。</p>
+<p>我们来从一个简单的例子开始看起：一个包含CustomView的ViewController。CustomView中声明了一个闭包，点击按钮时，执行这个闭包。</p>
+<pre><code class="language-Swift">class CustomView:UIView{ 
+    var onTap:(()-&gt;Void)?
+    ...
+}
+
+class ViewController:UIViewController{ 
+    let customView = CustomView() 
+    var buttonClicked = false
+    
+    func setupCustomView(){
+        var timesTapped = 0
+        customView.onTap = {
+            timesTapped += 1 
+            print(&quot;button tapped \(timesTapped) times&quot;)
+            self.buttonClicked = true
+        }
+    }
+}
+</code></pre>
+<p>当传值给这个闭包时，它需要引用一些变量才能执行。在这里，<code>self</code>和<code>timesTapped</code>这两个闭包外的变量被引用了。为了确保这些变量在执行时能够使用，闭包会强引用它们，这样它们就不会在使用前被释放，以至于崩溃。</p>
+<p>但是仔细看看，ViewController强引用了CustomView，CustomView强引用了onTap这个闭包，而这个闭包却强引用了<code>self</code>
+所以这时候的引用关系成了这样：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/5/30/163b073fba0af755?w=915&amp;h=333&amp;f=png&amp;s=18170" alt=""></p>
+<p>从图中我们可以清楚地看到循环引用。这意味着当你退出这个view controller时，它不会从内存中释放掉，因为它仍然被这个闭包所引用。</p>
+<p>这个例子十分清楚，<code>viewController</code>中包含一个<code>subview</code>属性，<code>subview</code>又包含一个捕获了<code>self</code>的<code>onTap</code>闭包。但不幸的是，还有更复杂的情况。</p>
+<h3 id="潜在的循环引用">潜在的循环引用</h3>
+<p>有一个问题需要你不断地提醒自己：谁持有了这个闭包？</p>
+<h4 id="uitableview">UITableView</h4>
+<p>如果写过iOS app，你应该已经知道了在一些情况下怎么去使用UITableView了，并且大多数时候用的还是自定义的cell和button</p>
+<p>下面是如何使用swift来实现。首先创建一个CustomCell，这个cell定义了一个用于执行点击事件的闭包：</p>
+<pre><code class="language-swift">class CustomCell: UITableViewCell {
+  
+  @IBOutlet weak var customButton: UIButton!
+  var onButtonTap:(()-&gt;Void)?
+    
+  @IBAction func buttonTap(){
+      onButtonTap?()
+  }
+}
+</code></pre>
+<p>然后在ViewController中去实现这个闭包的功能：</p>
+<pre><code class="language-swift">class TableViewController: UITableViewController {
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -&gt; UITableViewCell {
+      let cell = tableView.dequeueReusableCell(withIdentifier: &quot;CustomCell&quot;, for: indexPath) as! CustomCell
+      cell.onButtonTap = {
+          self.navigationController?.pushViewController(NewViewController(), animated: true)
+      }
+  }
+}
+</code></pre>
+<p>谁持有了这个闭包？由于我们在CustomCell中明确声明了，所以在这里，我们清楚地知道是这个cell，并且tableView持有了cell，tableViewController也持有了tableView。</p>
+<p>如下图所示，循环引用又出现了。并且如果你之前没有碰到这样的情况，这次的循环引用更难被发现。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/5/30/163b07476191a177?w=1094&amp;h=466&amp;f=png&amp;s=26955" alt=""></p>
+<h4 id="gcd">GCD</h4>
+<p>相信你之前已经用到过GCD了，你清楚下面代码中是否有循环引用吗？</p>
+<pre><code class="language-swift">override func viewDidLoad() {
+  super.viewDidLoad()
+  DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+    self.navigationController?.pushViewController(NewViewController())
+  }
+}
+</code></pre>
+<p>首先我们来搞清楚，谁持有了这个闭包？ViewController并没有任何相关的属性，它只是在一个DispatchQueue的单例中被调用了。所以这时，最坏的情况发生了，DispatchQueue的单例在调用<code>asyncAfter</code>方法时持有了它。遗憾的是我们不能看到这个方法具体的实现，但是，这个闭包只会执行一次，并且是在一个事先明确的时间执行，这个单例没有理由保留这个引用关系。在这种情况下，当闭包执行完毕后，对<code>self</code>的引用就结束了，而<code>self</code>又没有引用这个闭包，因此，并没有循环引用。请注意，使用<code>UIView.animate(){}</code>闭包实现动画同样适用这个逻辑。</p>
+<h4 id="alamofire">Alamofire</h4>
+<p>我们来看看这种情况，我们需要实现一个App,有一个LoginViewController，我们需要用Alamofire来与服务器交互数据：</p>
+<pre><code class="language-swift">Alamofire.request(&quot;https://yourapi.com/login&quot;, method: .post, parameters: [&quot;email&quot;:&quot;test@gmail.com&quot;,&quot;password&quot;:&quot;1234&quot;]).responseJSON { (response:DataResponse&lt;Any&gt;) in
+    if response.response?.statusCode == 200 {
+        self.navigationController?.pushViewController(NewViewController(), animated: true)
+    }else{
+        //Show alert
+    }
+}
+</code></pre>
+<p>谁持有了这个闭包？在这里，闭包是作为<code>request</code>函数的参数声明的，但是你并不知道Alamofire在闭包中做了什么，也不知道闭包什么时候被释放的。</p>
+<p>如果你去深究一下实现的原理，你就能了解到，<code>request</code>方法有一个操作队列<code>queue</code>。当<code>response()</code>方法被调用时，我们会把这个闭包放入<code>queue</code>中，当闭包执行完毕时，闭包就会从<code>queue</code>中移除。所以，在这里并没有循环引用发生，因为只有<code>queue</code>保留了闭包，但一旦执行完毕，闭包就立刻被释放了。</p>
+<p>注意，即使你保留了<code>request</code>的引用，或者引用<code>SessionManager</code>，闭包也会被释放掉，不会有任何循环引用。</p>
+<h4 id="rxswift">RxSwift</h4>
+<p>在这个例子里，你需要实现一个UISearchBar,当你改变<code>searchBar</code>中的文字时，label同时改变：</p>
+<pre><code class="language-swift">class ViewController: UIViewController {
+  
+  @IBOutlet weak var searchBar: UISearchBar!
+  @IBOutlet weak var label: UILabel!
+  
+  override func viewDidLoad() {
+    searchBar.rx.text.throttle(0.2, scheduler: MainScheduler.instance).subscribe(onNext: {(searchText) in
+      self.label.text = &quot;new value: \(searchText)&quot;
+    }).addDisposableTo(bag)
+  }
+}
+</code></pre>
+<p>谁持有了这个闭包？这个闭包能被多次调用，并且我们也不知道什么时候被调用，所以RxSwift需要保持对闭包的引用。在这种情况下闭包实际上是被<code>searchBar</code>直接持有的,因为当<code>searchBar</code>被释放时，闭包也一定要被释放。但是仔细看看，<code>self</code> 持有了<code>searchBar</code>，闭包又引用了<code>self</code>。所以在这里是存在循环引用的，我们需要打破这个引用以防内存泄漏。</p>
+<h3 id="打破循环引用">打破循环引用</h3>
+<p>要打破循环引用，你只需要破坏其中的一个引用关系即可，我们当然要选择最简单的。当处理闭包问题时，我们期望能打破其中最后一个连接，那就是闭包的引用。</p>
+<p>要实现这一点，你需要明确，当你的闭包捕获外部变量时，最好不要是一个强引用关系。你可以有两个选择，在闭包头部使用 <code>weak</code> 或者 <code>unowned</code>关键字。</p>
+<p>例如，在上面的UITableView例子中：</p>
+<pre><code class="language-swift">cell.onButtonTap = { [unowned self] in
+    self.navigationController?.pushViewController(NewViewController(), animated: true)
+}
+</code></pre>
+<p>是用<code>weak</code> 还是 <code>unowned</code>呢？这有一点复杂。通常来说，当闭包不会比它所捕获的变量存在得久时，你需要使用<code>unowned</code>。在上面的例子中，cell和闭包不会比<code>tableViewController</code>更“持久”，所以我们可以使用<code>unowned</code>。如果你想知道更多关于<code>weak</code>和<code>unowned</code>的用法，我推荐阅读一下这些非常棒的文章</p>
+<p><a href="https://www.uraimo.com/2016/10/27/unowned-or-weak-lifetime-and-performance/">Unowned or Weak? Lifetime and Performance</a></p>
+<p><a href="https://krakendev.io/blog/weak-and-unowned-references-in-swift">&quot;WEAK, STRONG, UNOWNED, OH MY!&quot; - A GUIDE TO REFERENCES IN SWIFT</a>。</p>
+<h3 id="内存泄漏的调试">内存泄漏的调试</h3>
+<p>有时候，你会发现想要搞清楚闭包是否被引用是很困难的，特别是你使用了第三方的一些库或者一些私有声明的时候。所以，你需要通过调试来找出循环引用。Xcode提供了非常好用的工具来帮助你找到内存泄漏。打开你App的工程，点击Xcode底部如下图所示的小图标，你就能查看内存情况。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/5/30/163b0758469fd640?w=408&amp;h=182&amp;f=png&amp;s=13591" alt=""></p>
+<p>还是上面的TableView例子中，如果在闭包<code>onButtonTap</code>中你不使用<code>weak</code>或者<code>unowned</code>关键字，你就会发现下图所示的情况：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/5/30/163b075bb34ef75c?w=228&amp;h=186&amp;f=png&amp;s=22029" alt=""></p>
+<p>右侧的感叹号代表发生了内存泄漏。但有时候，Xcode并不能正常地发现泄漏，泄漏真实存在但并没有被发现是完全有可能的。在这种情况下，你只需要关注内存中有哪些东西，如果你发现了一些本不应该存在的东西，很有可能就发生了泄漏。</p>
+<p>这篇文章能帮助到你更加深刻的理解在闭包中内存泄漏时如何发生的，希望你能喜欢。如果有任何疑问或者反馈，尽情写下来吧！</p>
+<p>特别感谢<a href="https://medium.com/@rvi">Rémy Virin</a>，在他对本文主题持有深刻理解的帮助下，我完成了这篇文章。</p>
+
+            </div>
+            
+              <div class="tag-container">
+                
+                  <a href="https://IkeBanPC.github.io/tag/ios" class="tag">
+                    iOS
+                  </a>
+                
+                  <a href="https://IkeBanPC.github.io/tag/swift" class="tag">
+                    Swift
+                  </a>
+                
+              </div>
+            
+            
+              <div class="next-post">
+                <div class="next">下一篇</div>
+                <a href="https://IkeBanPC.github.io/post/hello-gridea">
+                  <h3 class="post-title">
+                    Hello Gridea
+                  </h3>
+                </a>
+              </div>
+            
+
+            
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+
+<script type="application/javascript">
+
+AOS.init();
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>
